@@ -1,163 +1,134 @@
 package com.nutccsie.myapplication;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.Socket;
-import java.net.UnknownHostException;
 
-import android.os.AsyncTask;
+import android.net.Uri;
 import android.os.Bundle;
 import android.app.Activity;
-import android.util.Log;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.app.TaskStackBuilder;
+import android.content.Context;
+import android.content.Intent;
+import android.support.v4.app.NotificationCompat;
 import android.view.View;
-import android.view.View.OnClickListener;
 import android.widget.Button;
-import android.widget.EditText;
-import android.widget.TextView;
 
 public class MainActivity extends Activity {
+    private NotificationManager myNotificationManager;
+    private int notificationIdOne = 111;
+    private int notificationIdTwo = 112;
+    private int numMessagesOne = 0;
+    private int numMessagesTwo = 0;
 
-    TextView textResponse,txtSend;
-    EditText editTextAddress, editTextPort;
-    Button buttonConnect, buttonClear,buttonSend;
-    Socket socket = null;
-    ByteArrayOutputStream byteArrayOutputStream;
-
-    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        editTextAddress = (EditText)findViewById(R.id.address);
-        editTextPort = (EditText)findViewById(R.id.port);
-        buttonConnect = (Button)findViewById(R.id.connect);
-        buttonClear = (Button)findViewById(R.id.clear);
-        textResponse = (TextView)findViewById(R.id.response);
-        buttonSend = (Button) findViewById(R.id.send_btn);
-        txtSend = (TextView) findViewById(R.id.txtSend);
-
-        buttonConnect.setOnClickListener(buttonConnectOnClickListener);
-        buttonSend.setOnClickListener(buttonSendOnClickListener);
-
-        buttonClear.setOnClickListener(new OnClickListener(){
-
-            @Override
-            public void onClick(View v) {
-                textResponse.setText("");
-            }});
-    }
-
-    OnClickListener buttonConnectOnClickListener =
-            new OnClickListener(){
-
-                @Override
-                public void onClick(View arg0) {
-                    MyClient_connect_Task myClientTask = new MyClient_connect_Task(editTextAddress.getText().toString(), Integer.parseInt(editTextPort.getText().toString()));
-                    myClientTask.execute();
-                }};
-
-    OnClickListener buttonSendOnClickListener =
-            new OnClickListener(){
-
-                @Override
-                public void onClick(View arg0) {
-                    MyClient_send_Task myClient_send_task =new MyClient_send_Task();
-                    myClient_send_task.execute(txtSend.getText().toString());
-                }};
-
-    public class MyClient_connect_Task extends AsyncTask<Void, Void, Void> {
-
-        String dstAddress;
-        int dstPort;
-        String response = "";
-
-        MyClient_connect_Task(String addr, int port){
-            dstAddress = addr;
-            dstPort = port;
-        }
-
-        @Override
-        protected Void doInBackground(Void... arg0) {
-            try {
-                Log.d("connectTask","connectTask");
-                socket = new Socket(dstAddress, dstPort);
-
-            } catch (UnknownHostException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-                response = "UnknownHostException: " + e.toString();
-            } catch (IOException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-                response = "IOException: " + e.toString();
+        Button notOneBtn = (Button) findViewById(R.id.notificationOne);
+        notOneBtn.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View view) {
+                displayNotificationOne();
             }
-            return null;
-        }
+        });
 
-        @Override
-        protected void onPostExecute(Void result) {
-            textResponse.setText(response);
-            super.onPostExecute(result);
-        }
-
-    }
-
-
-    public class MyClient_send_Task extends AsyncTask<String, Void, Void> {
-        String response = "";
-
-        @Override
-        protected Void doInBackground(String... arg0) {
-            try {
-                Log.d("sendTask","sendTask");
-                byte[] data = arg0[0].getBytes("UTF-8");
-                OutputStream os = socket.getOutputStream();
-                os.write(data);
-
-                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(1024);
-                byte[] buffer = new byte[1024];
-
-                int bytesRead;
-                InputStream inputStream = socket.getInputStream();
-
-    /*
-     * notice:
-     * inputStream.read() will block if no data return
-     */
-                while ((bytesRead = inputStream.read(buffer)) != -1){
-                    byteArrayOutputStream.write(buffer, 0, bytesRead);
-                    response += byteArrayOutputStream.toString("UTF-8");
-                }
-
-            } catch (UnknownHostException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-                response = "UnknownHostException: " + e.toString();
-            } catch (IOException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-                response = "IOException: " + e.toString();
-            }finally{
-                if(socket != null){
-                    try {
-                        socket.close();
-                    } catch (IOException e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
-                    }
-                }
+        Button notTwoBtn = (Button) findViewById(R.id.notificationTwo);
+        notTwoBtn.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View view) {
+                displayNotificationTwo();
             }
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(Void result) {
-            textResponse.setText(response);
-            super.onPostExecute(result);
-        }
+        });
 
     }
+
+    protected void displayNotificationOne() {
+
+        // Invoking the default notification service
+        NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(this);
+
+        mBuilder.setContentTitle("New Message with explicit intent");
+        mBuilder.setContentText("New message from javacodegeeks received");
+        mBuilder.setTicker("Explicit: New Message Received!");
+        mBuilder.setSmallIcon(R.mipmap.ic_launcher);
+
+        // Increase notification number every time a new notification arrives
+        mBuilder.setNumber(++numMessagesOne);
+
+        // Creates an explicit intent for an Activity in your app
+        Intent resultIntent = new Intent(this, NotificationOne.class);
+        resultIntent.putExtra("notificationId", notificationIdOne);
+
+        //This ensures that navigating backward from the Activity leads out of the app to Home page
+        TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
+
+        // Adds the back stack for the Intent
+        stackBuilder.addParentStack(NotificationOne.class);
+
+        // Adds the Intent that starts the Activity to the top of the stack
+        stackBuilder.addNextIntent(resultIntent);
+        PendingIntent resultPendingIntent =
+                stackBuilder.getPendingIntent(
+                        0,
+                        PendingIntent.FLAG_ONE_SHOT //can only be used once
+                );
+        // start the activity when the user clicks the notification text
+        mBuilder.setContentIntent(resultPendingIntent);
+
+        myNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+
+        // pass the Notification object to the system
+        myNotificationManager.notify(notificationIdOne, mBuilder.build());
+    }
+
+    protected void displayNotificationTwo() {
+        // Invoking the default notification service
+        NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(this);
+
+        mBuilder.setContentTitle("New Message with implicit intent");
+        mBuilder.setContentText("New message from javacodegeeks received...");
+        mBuilder.setTicker("Implicit: New Message Received!");
+        mBuilder.setSmallIcon(R.mipmap.ic_launcher);
+
+        NotificationCompat.InboxStyle inboxStyle = new NotificationCompat.InboxStyle();
+
+        String[] events = new String[3];
+        events[0] = new String("1) Message for implicit intent");
+        events[1] = new String("2) big view Notification");
+        events[2] = new String("3) from javacodegeeks!");
+
+        // Sets a title for the Inbox style big view
+        inboxStyle.setBigContentTitle("More Details:");
+        // Moves events into the big view
+        for (int i = 0; i < events.length; i++) {
+            inboxStyle.addLine(events[i]);
+        }
+        mBuilder.setStyle(inboxStyle);
+
+        // Increase notification number every time a new notification arrives
+        mBuilder.setNumber(++numMessagesTwo);
+
+        // When the user presses the notification, it is auto-removed
+        mBuilder.setAutoCancel(true);
+
+        // Creates an implicit intent
+        Intent resultIntent = new Intent("com.example.javacodegeeks.TEL_INTENT",
+                Uri.parse("tel:123456789"));
+        resultIntent.putExtra("from", "javacodegeeks");
+
+        TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
+        stackBuilder.addParentStack(NotificationTwo.class);
+
+        stackBuilder.addNextIntent(resultIntent);
+        PendingIntent resultPendingIntent =
+                stackBuilder.getPendingIntent(
+                        0,
+                        PendingIntent.FLAG_ONE_SHOT
+                );
+        mBuilder.setContentIntent(resultPendingIntent);
+
+        myNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+
+        myNotificationManager.notify(notificationIdTwo, mBuilder.build());
+
+    }
+
 }
-
